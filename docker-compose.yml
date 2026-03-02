@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft mode (không cần Zookeeper)
+      CLUSTER_ID: qH6r8Qj_RbKkRrG2iG5SjA
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.31.18.144:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+      # Vì chỉ 1 broker (dev)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      # Windows path: dùng "/" thay vì "\" khi mount
+      - "/home/ubuntu/kafka-sse/data"
+    # Tự sinh CLUSTER_ID lần đầu, các lần sau dùng data đã format
+    command: >
+      bash -c '
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          export CLUSTER_ID=$$(kafka-storage random-uuid);
+        fi;
+        /etc/confluent/docker/run
+      '
+    restart: unless-stopped
+    networks:
+      - shared-infra
+networks:
+  shared-infra:
+    external: true
+    name: shared-infra
